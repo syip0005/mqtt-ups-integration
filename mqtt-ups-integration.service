@@ -1,0 +1,15 @@
+[Unit]
+Description=MQTT UPS Integration
+After=network.target
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+WorkingDirectory=/home/%i/mqtt-ups-integration
+ExecStart=/home/%i/mqtt-ups-integration/run.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
