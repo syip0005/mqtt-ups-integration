@@ -25,11 +25,10 @@ POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "2"))
 
 # Device Information
 DEVICE_INFO = {
-    "identifiers": [os.getenv("DEVICE_IDENTIFIER", "cyberpower_cp1600epfclcd_au")],
-    "name": os.getenv("DEVICE_NAME", "CyberPower UPS"),
-    "model": os.getenv("DEVICE_MODEL", "CP1600EPFCLCD-AU"),
-    "manufacturer": os.getenv("DEVICE_MANUFACTURER", "CyberPower Systems"),
-    "serial_number": os.getenv("DEVICE_SERIAL_NUMBER", "BH8PZ2000287"),
+    "identifiers": ["ups_mqtt_integration"],
+    "name": "UPS",
+    "model": "Unknown",
+    "manufacturer": "Unknown",
 }
 
 # Status code mapping
@@ -63,7 +62,7 @@ SENSORS = [
     },
     {
         "name": "UPS Battery Runtime",
-        "key": "battery_runtime",
+        "key": "battery_runtime_",
         "unit": "s",
         "icon": "mdi:timer-outline",
         "state_class": "measurement",
@@ -96,5 +95,42 @@ SENSORS = [
         "state_class": "measurement",
         "enabled_by_default": True,
         "value_key": "output.voltage",
+    },
+    {
+        "name": "UPS Input Voltage",
+        "key": "input_voltage_",
+        "unit": "V",
+        "device_class": "voltage",
+        "icon": "mdi:current-ac",
+        "state_class": "measurement",
+        "enabled_by_default": True,
+        "value_key": "input.voltage",
+    },
+    {
+        "name": "UPS Battery Voltage",
+        "key": "battery_voltage_",
+        "unit": "V",
+        "device_class": "voltage",
+        "icon": "mdi:battery-heart-variant",
+        "state_class": "measurement",
+        "enabled_by_default": True,
+        "value_key": "battery.voltage",
+    },
+    {
+        "name": "UPS Nominal Power",
+        "key": "ups_nominal_power",
+        "unit": "W",
+        "device_class": "power",
+        "icon": "mdi:flash",
+        "state_class": "measurement",
+        "enabled_by_default": True,
+        "value_key": "ups.realpower.nominal",
+    },
+    {
+        "name": "UPS Model",
+        "key": "ups_model",
+        "icon": "mdi:information-outline",
+        "enabled_by_default": True,
+        "value_key": "ups.model",
     },
 ]

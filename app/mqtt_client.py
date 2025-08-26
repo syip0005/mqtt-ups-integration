@@ -36,6 +36,7 @@ class MQTTClient:
 
         # Set last will and testament
         self.client.will_set(f"{MQTT_TOPIC_BASE}/availability", "offline", retain=True)
+        self.discovery_published = False
 
     def connect(self) -> None:
         """Connect to the MQTT broker"""
@@ -64,8 +65,8 @@ class MQTTClient:
         """Callback for when the client connects to the broker"""
         if rc == 0:
             logger.info("Connected to MQTT broker")
-            # Publish discovery configuration when connected
-            self.publish_discovery_config()
+            # Publish availability as online
+            self.client.publish(f"{MQTT_TOPIC_BASE}/availability", "online", retain=True)
         else:
             logger.error(f"Failed to connect to MQTT broker: {rc}")
 
@@ -73,20 +74,26 @@ class MQTTClient:
         """Callback for when the client disconnects from the broker"""
         logger.warning("Disconnected from MQTT broker")
 
-    def publish_discovery_config(self) -> None:
+    def publish_discovery_config(self, device_info: Dict[str, str]) -> None:
         """Publish Home Assistant MQTT Discovery configuration for sensors"""
+        base_device_info = {
+            "identifiers": device_info.get("serial_number", "ups_mqtt_integration"),
+            "name": device_info.get("model", "UPS"),
+            "model": device_info.get("model", "Unknown"),
+            "manufacturer": device_info.get("manufacturer", "Unknown"),
+            "serial_number": device_info.get("serial_number"),
+        }
+
         for sensor in SENSORS:
             config = {
-                "name": sensor["name"],
+                "name": f"{base_device_info['name']} {sensor['name']}",
                 "unique_id": f"ups_{sensor['key']}",
                 "state_topic": f"{MQTT_TOPIC_BASE}/{sensor['key']}",
-                "device": DEVICE_INFO,
+                "device": base_device_info,
                 "availability_topic": f"{MQTT_TOPIC_BASE}/availability",
                 "icon": sensor["icon"],
-                "enabled_by_default": True,
             }
 
-            # Add optional attributes if they exist
             if sensor.get("unit"):
                 config["unit_of_measurement"] = sensor["unit"]
             if sensor.get("device_class"):
@@ -96,13 +103,13 @@ class MQTTClient:
             if sensor.get("enabled_by_default") is not None:
                 config["enabled_by_default"] = sensor["enabled_by_default"]
 
-            # Publish discovery config
-            discovery_topic = f"{DISCOVERY_PREFIX}/sensor/ups_{sensor['key']}/config"
+            discovery_topic = (
+                f"{DISCOVERY_PREFIX}/sensor/ups_{sensor['key']}/config"
+            )
             self.client.publish(discovery_topic, json.dumps(config), retain=True)
             logger.info(f"Published discovery config for {sensor['name']}")
 
-        # Publish availability as online
-        self.client.publish(f"{MQTT_TOPIC_BASE}/availability", "online", retain=True)
+        self.discovery_published = True
 
     def publish_data(self, data: Optional[Dict[str, str]]) -> None:
         """
@@ -117,6 +124,15 @@ class MQTTClient:
                 f"{MQTT_TOPIC_BASE}/availability", "offline", retain=True
             )
             return
+
+        # Update and publish discovery config if not already done
+        if not self.discovery_published:
+            device_info = {
+                "model": data.get("device.model"),
+                "manufacturer": data.get("device.mfr"),
+                "serial_number": data.get("device.serial"),
+            }
+            self.publish_discovery_config(device_info)
 
         # Extract metrics based on sensor definitions
         metrics = {}
@@ -147,13 +163,13 @@ class MQTTClient:
         if published_count > 0:
             # Calculate runtime in minutes for display
             runtime_display = "N/A"
-            if metrics["battery_runtime"]:
+            if metrics["battery_runtime_"]:
                 try:
-                    runtime_min = int(float(metrics["battery_runtime"])) // 60
-                    runtime_sec = int(float(metrics["battery_runtime"])) % 60
+                    runtime_min = int(float(metrics["battery_runtime_"])) // 60
+                    runtime_sec = int(float(metrics["battery_runtime_"])) % 60
                     runtime_display = f"{runtime_min}m{runtime_sec}s"
                 except Exception:
-                    runtime_display = f"{metrics['battery_runtime']}s"
+                    runtime_display = f"{metrics['battery_runtime_']}s"
 
             logger.info(
                 f"Published {published_count}/{len(SENSORS)} metrics - "
@@ -161,7 +177,9 @@ class MQTTClient:
                 f"Runtime: {runtime_display}, "
                 f"Load: {metrics['ups_load']}%, "
                 f"Status: {metrics['ups_status']}, "
-                f"Output: {metrics['output_voltage']}V"
+                f"Input: {metrics['input_voltage_']}V, "
+                f"Output: {metrics['output_voltage']}V, "
+                f"Battery Voltage: {metrics['battery_voltage_']}V"
             )
         else:
             logger.warning("No metrics were published")

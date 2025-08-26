@@ -34,7 +34,7 @@ def main() -> NoReturn:
 
         logger.info("Starting UPS monitoring...")
         logger.info(
-            "Monitoring metrics: battery.charge, battery.runtime, ups.load, ups.status, output.voltage"
+            "Monitoring metrics: battery.charge, battery.runtime, ups.load, ups.status, output.voltage, input.voltage, battery.voltage, ups.realpower.nominal, ups.model"
         )
 
         # Give connection time to establish
